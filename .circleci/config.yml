@@ -1,0 +1,28 @@
+version: 2.1
+jobs:
+  build_and_push:
+    machine:
+      enabled: true
+    steps:
+      - checkout
+      - run:
+          name: Build Docker image
+          command: docker build -t nodeapp:latest .
+      - run:
+          name: Test Docker image
+          command: |
+            docker run -d --name nodeappcontainer -p 8080:8080 nodeapp
+            sleep 5 # Donne un peu de temps au conteneur pour démarrer
+            curl --retry 10 --retry-delay 5 -v http://127.0.0.1:8080/
+      - run:
+          name: Push to DockerHub
+          command: |
+            echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker tag nodeapp:latest $DOCKERHUB_USERNAME/nodeapp:latest
+            docker push $DOCKERHUB_USERNAME/nodeapp:latest
+
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build_and_push
